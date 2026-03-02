@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>the#COMMUNITY — Tile Gallery</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    position: sticky;
+    top: 0;
+    background: #0a0a0aee;
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    border-bottom: 1px solid #222;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: #fff;
+  }
+  header h1 span { color: #ff6b6b; }
+  header p {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+  }
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .controls button {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #ccc;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .controls button:hover { border-color: #ff6b6b; color: #fff; }
+  .controls button.active { background: #ff6b6b; border-color: #ff6b6b; color: #fff; }
+
+  /* Scroll layout - single column, full width */
+  .gallery-scroll {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  .tile-card {
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+    border: 1px solid #1a1a1a;
+    transition: border-color 0.2s;
+  }
+  .tile-card:hover { border-color: #333; }
+  .tile-card img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+  }
+  .tile-info {
+    padding: 0.8rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .tile-num {
+    font-size: 0.75rem;
+    color: #ff6b6b;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tile-caption {
+    font-size: 0.75rem;
+    color: #777;
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  /* Grid layout */
+  .gallery-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 4px;
+  }
+  .gallery-grid .tile-card {
+    margin-bottom: 0;
+    border-radius: 2px;
+    border: none;
+  }
+  .gallery-grid .tile-info { display: none; }
+  .gallery-grid .tile-card img { aspect-ratio: 1; object-fit: cover; }
+
+  /* Continuous scroll (tiles stitched together) */
+  .gallery-continuous {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  .gallery-continuous .tile-card {
+    margin-bottom: 0;
+    border-radius: 0;
+    border: none;
+    background: none;
+  }
+  .gallery-continuous .tile-info { display: none; }
+
+  .hidden { display: none !important; }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000ee;
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+  }
+  .lightbox-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff2;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    padding: 1rem;
+    cursor: pointer;
+    z-index: 1001;
+  }
+  .lightbox-nav:hover { background: #fff4; }
+  .lightbox-nav.prev { left: 1rem; }
+  .lightbox-nav.next { right: 1rem; }
+  .lightbox-counter {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #999;
+    font-size: 0.9rem;
+    z-index: 1001;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>the<span>#</span>COMMUNITY</h1>
+  <p>Tom Annese — Digital Painting Series</p>
+  <div class="controls">
+    <button class="active" data-view="scroll">Scroll</button>
+    <button data-view="grid">Grid</button>
+    <button data-view="continuous">Continuous</button>
+  </div>
+</header>
+
+<div id="gallery-scroll" class="gallery-scroll"></div>
+<div id="gallery-grid" class="gallery-grid hidden"></div>
+<div id="gallery-continuous" class="gallery-continuous hidden"></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-nav prev" onclick="navLightbox(-1)">‹</button>
+  <img id="lightbox-img" src="" alt="">
+  <button class="lightbox-nav next" onclick="navLightbox(1)">›</button>
+  <div class="lightbox-counter" id="lightbox-counter"></div>
+</div>
+
+<script>
+let tiles = [];
+let currentLightbox = -1;
+let currentView = 'scroll';
+
+fetch('tiles.json')
+  .then(r => r.json())
+  .then(data => {
+    tiles = data;
+    renderAll();
+  });
+
+function renderAll() {
+  const scrollEl = document.getElementById('gallery-scroll');
+  const gridEl = document.getElementById('gallery-grid');
+  const contEl = document.getElementById('gallery-continuous');
+
+  let scrollHTML = '', gridHTML = '', contHTML = '';
+
+  tiles.forEach((t, i) => {
+    const card = `
+      <div class="tile-card">
+        <img src="${t.file}" alt="Tile ${t.num}" loading="lazy" onclick="openLightbox(${i})">
+        <div class="tile-info">
+          <span class="tile-num">#${t.num}</span>
+          <span class="tile-caption">${t.caption.split(',').slice(1, 4).join(',').trim() || ''}</span>
+        </div>
+      </div>`;
+    scrollHTML += card;
+    gridHTML += card;
+    contHTML += `<div class="tile-card"><img src="${t.file}" alt="Tile ${t.num}" loading="lazy" onclick="openLightbox(${i})"></div>`;
+  });
+
+  scrollEl.innerHTML = scrollHTML;
+  gridEl.innerHTML = gridHTML;
+  contEl.innerHTML = contHTML;
+}
+
+// View switching
+document.querySelectorAll('.controls button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    ['scroll', 'grid', 'continuous'].forEach(v => {
+      document.getElementById('gallery-' + v).classList.toggle('hidden', v !== currentView);
+    });
+  });
+});
+
+// Lightbox
+function openLightbox(i) {
+  currentLightbox = i;
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = tiles[i].file;
+  document.getElementById('lightbox-counter').textContent = `${i + 1} / ${tiles.length}  —  #${tiles[i].num}`;
+  lb.classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  currentLightbox = -1;
+}
+
+function navLightbox(dir) {
+  event.stopPropagation();
+  currentLightbox = (currentLightbox + dir + tiles.length) % tiles.length;
+  document.getElementById('lightbox-img').src = tiles[currentLightbox].file;
+  document.getElementById('lightbox-counter').textContent = `${currentLightbox + 1} / ${tiles.length}  —  #${tiles[currentLightbox].num}`;
+}
+
+document.getElementById('lightbox').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('lightbox') || e.target === document.getElementById('lightbox-img')) closeLightbox();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (currentLightbox === -1) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') navLightbox(-1);
+  if (e.key === 'ArrowRight') navLightbox(1);
+});
+</script>
+</body>
+</html>
