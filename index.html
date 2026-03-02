@@ -100,7 +100,7 @@
     margin: 0 auto;
     padding: 1rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 4px;
   }
   .gallery-grid .tile-card {
@@ -176,14 +176,14 @@
   <h1>the<span>#</span>COMMUNITY</h1>
   <p>Tom Annese — Digital Painting Series</p>
   <div class="controls">
-    <button class="active" data-view="scroll">Scroll</button>
-    <button data-view="grid">Grid</button>
+    <button data-view="scroll">Scroll</button>
+    <button class="active" data-view="grid">Grid</button>
     <button data-view="continuous">Continuous</button>
   </div>
 </header>
 
-<div id="gallery-scroll" class="gallery-scroll"></div>
-<div id="gallery-grid" class="gallery-grid hidden"></div>
+<div id="gallery-scroll" class="gallery-scroll hidden"></div>
+<div id="gallery-grid" class="gallery-grid"></div>
 <div id="gallery-continuous" class="gallery-continuous hidden"></div>
 
 <div class="lightbox" id="lightbox">
@@ -201,7 +201,7 @@ let currentView = 'scroll';
 fetch('tiles.json')
   .then(r => r.json())
   .then(data => {
-    tiles = data;
+    tiles = data.reverse();
     renderAll();
   });
 
